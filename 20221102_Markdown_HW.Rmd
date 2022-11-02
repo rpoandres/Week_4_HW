@@ -1,0 +1,45 @@
+---
+title: "20221102_Markdown_HW"
+output: html_document
+date: '2022-11-02'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r libraries}
+
+library(here)
+library(tidyverse)
+library(dplyr)
+library(tmap)
+library(sp)
+library(sf)
+library(janitor)
+library(countrycode)
+
+
+```
+
+
+## Read my input data
+
+```{r inputs}
+
+World <- st_read("Data/World_Countries__Generalized_.shp")
+
+HDI <- read_delim("Data/HDR21-22_Composite_indices_complete_time_series.csv", delim=";", na= "NULL")
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
