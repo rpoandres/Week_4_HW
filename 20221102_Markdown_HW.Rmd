@@ -19,6 +19,7 @@ library(sp)
 library(sf)
 library(janitor)
 library(countrycode)
+library(RSQLite)
 
 
 ```
@@ -30,16 +31,105 @@ library(countrycode)
 
 World <- st_read("Data/World_Countries__Generalized_.shp")
 
-HDI <- read_delim("Data/HDR21-22_Composite_indices_complete_time_series.csv", delim=";", na= "NULL")
+HDI <- read_delim("Data/HDR21-22_Composite_indices_complete_time_series.csv", delim=";" , na= " ")
+
+```
+Viewing the type of the variables
+
+```{r}
+
+Datatypelist <- HDI %>% 
+  summarise_all(class) %>%
+  pivot_longer(everything(), 
+               names_to="All_variables", 
+               values_to="Variable_class")
+Datatypelist
+
+
+```
+Selecting the columns of interest
+
+
+```{r}
+HDIcols<- HDI %>%
+  clean_names()%>%
+  select(iso3, country, gii_2019, gii_2010)%>%
+  mutate(difference=gii_2019-gii_2010)%>%
+  #not needed here as we can now use the country name...but see below
+  mutate(iso_code=countrycode(country, origin = 'country.name', destination = 'iso2c'))%>%
+  mutate(iso_code2=countrycode(iso3, origin ='iso3c', destination = 'iso2c'))
+```
+Join with shape
+
+```{r}
+
+Join_HDI <- World %>% 
+  clean_names() %>%
+  left_join(., 
+            HDIcols,
+            by = c("iso" = "iso_code"))
+
 
 ```
 
-## Including Plots
+Plot the basic tematic map
 
-You can also embed plots, for example:
+```{r}
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+
+tmap_mode("plot")
+Join_HDI %>%
+  qtm(.,fill = "difference")
+
+
+```
+Alternative map
+
+```{r}
+
+tm_shape(Join_HDI) + 
+  tm_polygons("difference", 
+              # style="pretty",
+              palette="RdBu",
+              midpoint=NA,
+              title="Difference GII ",
+              alpha = 0.5) +   tm_compass(position = c("left", "bottom"),type = "arrow") + 
+  tm_scale_bar(position = c("left", "bottom")) +
+  tm_layout(title = "Difference 2010 / 2019 Gender Inequality Index by Country", 
+            legend.position = c("left", "bottom"))
+
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+Create geopachage
+
+```{r}
+
+Join_HDI %>%
+  st_write(.,"Data/20221102_Geo_HDI_Diff.gpkg")
+
+
+```
+
+Connecting and including data csv to geo package
+
+```{r}
+
+con <- dbConnect(RSQLite::SQLite(),dbname="Data/20221102_Geo_HDI_Diff.gpkg")
+
+con %>%
+  dbWriteTable(.,
+               "original_csv",
+               HDIcols,
+               overwrite=TRUE)
+
+
+con %>% 
+  dbDisconnect()
+
+
+```
+
+
